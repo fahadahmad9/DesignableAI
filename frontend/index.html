@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Image Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 600px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        input[type="file"] {
+            padding: 0.5rem;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 0.75rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        h2 {
+            margin-top: 2rem;
+            color: #333;
+        }
+        pre {
+            background-color: #f0f0f0;
+            padding: 1rem;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 100px;
+            font-size: 0.95rem;
+            color: #333;
+        }
+        .details {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .error {
+            color: #d32f2f;
+        }
+        .success {
+            color: #388e3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OCR Image Upload</h1>
+        
+        <div class="upload-section">
+            <input type="file" id="fileInput" accept="image/*">
+            <button onclick="uploadImage()" id="uploadBtn">Upload & Extract Text</button>
+        </div>
+
+        <h2>Extracted Text:</h2>
+        <pre id="result">No text yet</pre>
+
+        <div class="details" id="details"></div>
+    </div>
+
+    <script>
+        async function uploadImage() {
+            const fileInput = document.getElementById("fileInput");
+            const resultBox = document.getElementById("result");
+            const detailsBox = document.getElementById("details");
+            const uploadBtn = document.getElementById("uploadBtn");
+
+            if (!fileInput.files.length) {
+                alert("Please select an image file!");
+                return;
+            }
+
+            resultBox.innerText = "Processing...";
+            detailsBox.innerText = "";
+            uploadBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/upload/", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    resultBox.innerText = `Error: ${data.error || "Upload failed"}`;
+                    resultBox.className = "error";
+                    return;
+                }
+
+                // Check if there's an error in the response
+                if (data.error) {
+                    resultBox.innerText = `Error: ${data.error}`;
+                    resultBox.className = "error";
+                    return;
+                }
+
+                // Display the extracted text
+                const fullText = data.full_text || "No text found";
+                resultBox.innerText = fullText;
+                resultBox.className = fullText !== "No text found" ? "success" : "";
+
+                // Display details if available
+                if (data.details && data.details.length > 0) {
+                    let detailsHtml = `<strong>Confidence Scores (${data.total_words} words found):</strong><br>`;
+                    data.details.forEach(item => {
+                        detailsHtml += `• "${item.text}": ${item.confidence}%<br>`;
+                    });
+                    detailsBox.innerHTML = detailsHtml;
+                }
+
+            } catch (err) {
+                resultBox.innerText = "Error: " + err.message;
+                resultBox.className = "error";
+                console.error(err);
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        }
+
+        // Allow Enter key to upload
+        document.getElementById("fileInput").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") uploadImage();
+        });
+    </script>
+</body>
+</html>
