@@ -4,12 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
 
-from utils.image_processing import extract_text
+from utils.image_processing import extract_text, extract_segments, visualize_segments, link_measurements_to_segments
+
 
 app = FastAPI()
-
-# Enable CORS
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,37 +28,65 @@ async def root():
 
 @app.post("/upload/")
 async def upload_image(file: UploadFile = File(...)):
-    """Upload image and extract text"""
+    """Upload image, extract text, and detect segments"""
     
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     
     try:
-        # Save the uploaded file
+        # Save uploaded file
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
         print(f"File saved: {file_path}")
         
         # Extract text using OCR
-        result = extract_text(file_path)
+        print("Starting text extraction...")
+        text_result = extract_text(file_path)
+        if isinstance(text_result, dict):
+            print(f"Text extraction result: {text_result.get('status', 'unknown')}")
+        else:
+            print(f"Extracted {len(text_result)} text items")
+
         
-        print(f"Result: {result}")
+        # Extract segments using CV
+        print("Starting segmentation...")
+        segments_result = extract_segments(file_path)
+        print(f"Segmentation result: {segments_result.get('status', 'unknown')}")
         
+        # Don't visualize in API - it blocks
+        visualize_segments(file_path, segments_result)
+        
+        # Link measurements to nearest segments
+        print("Linking measurements to segments...")
+        linked_data = link_measurements_to_segments(
+            text_result if isinstance(text_result, list) else text_result.get("details", []),
+            segments_result.get("segments", [])
+        )
+
+        print(f"Linked {len(linked_data)} measurements to segments")
+
+        # Combine results
+        result = {
+            "text_result": text_result,
+            "segments_result": segments_result,
+            "linked_data": linked_data,   # <-- added this line
+        }
+
         return JSONResponse(content=result)
     
     except Exception as e:
-        print(f"Error: {str(e)}")
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"ERROR in upload endpoint: {error_detail}")
         return JSONResponse(
             status_code=500,
-            content={"error": str(e)}
+            content={"error": str(e), "detail": error_detail}
         )
     
     finally:
-        # Clean up the file
         if os.path.exists(file_path):
             os.remove(file_path)
             print(f"File deleted: {file_path}")
-
 
 if __name__ == "__main__":
     import uvicorn
