@@ -65,11 +65,6 @@ def classify_chair(parts: set) -> str:
     Rule-based chair type classification using the canonical part set.
     Returns a string label describing the predicted chair type.
     """
-
-    #Wing Chair
-    if "Wing_Flange" in parts or "wing_flanage" in parts:
-        return "Wing Chair" 
-
     # Eames lounge
     if {"eames_lounge_cushion", "eames_base", "headrest", "backrest"}.issubset(parts):
         return "Eames Lounge Chair"
@@ -80,7 +75,7 @@ def classify_chair(parts: set) -> str:
         return "Ergonomic Office Chair"
 
     # Sofa chair
-    if "armrest_sofa" in parts:
+    if "sofa_armrest" in parts:
         return "Sofa Chair"
 
     # Egg chair
@@ -134,7 +129,7 @@ def classify_json(raw_json: List[Dict[str, Any]], image_id: str = "uploaded_imag
     return {
         "canonical_parts": sorted(list(parts)),
         "identified_type": chair_type,
-        "llama_prompt": prompt # SHOULD I REMOVE THIS?
+        "llama_prompt": prompt
     }
 
 

@@ -1,115 +1,63 @@
-# main.py
-from visions_utils import ocr_extract_lines, parse_measurements_from_lines
 import uvicorn
 import tempfile
 import os
-import json
-from fastapi import FastAPI, File, UploadFile, HTTPException, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Depends
-from database.connection import engine
-from database.models import Base
-from auth.routes import router as auth_router
-from design_analysis import router as design_analysis_router
-
 from yolov8_inference import run_inference_on_image
 from chair_classification import classify_json
-from prompt_builder import build_prompt_from_classifier_result
-from llama_client import call_llama
 
+app = FastAPI(title="DesignableAI - Chair Analyzer")
 
-app = FastAPI(title="DesignableAI - Unified Endpoint")
-Base.metadata.create_all(bind=engine)
-
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allow all origins (adjust in production)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(auth_router, prefix="/auth")
-app.include_router(design_analysis_router)
-
-
 @app.post("/analyze-chair")
-async def analyze_chair(request: Request, file: UploadFile = None):
-
-    # -------------------------
-    # CASE 1: User is chatting
-    # -------------------------
-    if file is None:
-        body = await request.json()
-        user_message = body.get("message")
-        history = body.get("history", [])
-
-        if not user_message:
-            raise HTTPException(status_code=400, detail="Missing 'message' field")
-
-        response = call_llama({
-            "system_prompt": history[0]["content"] if history else "",
-            "prompt": user_message
-        })
-
-        messages = history + [{"role": "user", "content": user_message}]
-        return {"assistant_reply": response, "history": messages}
-
-
-    # -------------------------
-    # CASE 2: Image uploaded
-    # -------------------------
+async def analyze_chair(file: UploadFile = File(...)):
+    # Accept only images (basic check)
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image.")
-
-    suffix = os.path.splitext(file.filename)[1] or ".jpg"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        temp_path = tmp.name
-        tmp.write(await file.read())
-
+    
+    # Save uploaded image temporarily
     try:
-        # OCR → measurement extraction
-        ocr_lines = ocr_extract_lines(temp_path)
-        measurements = parse_measurements_from_lines(ocr_lines)
-
-        # YOLO inference
-        detections = run_inference_on_image(temp_path, conf_thresh=0.25)
-
-        # Classification (NO measurement param!)
-        classification = classify_json(detections, image_id=file.filename)
-
-        # Attach measurements here
-        classification["measurements"] = measurements
-        classification["ocr_lines"] = ocr_lines
-
-        # Build LLaMA prompt
-        prompt_payload = build_prompt_from_classifier_result(classification)
-
-        # First assistant reply
-        assistant_reply = call_llama(prompt_payload)
-
-        history = [
-            {"role": "system", "content": prompt_payload["system_prompt"]},
-            {"role": "assistant", "content": assistant_reply}
-        ]
-
-        return {
-            "analysis": classification,
-            "assistant_reply": assistant_reply,
-            "history": history
-        }
-
+        suffix = os.path.splitext(file.filename)[1] or ".jpg"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            temp_path = tmp.name
+            content = await file.read()
+            tmp.write(content)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
+        raise HTTPException(status_code=500, detail=f"Failed to save uploaded file: {e}")
+    
+    try:
+        # Run YOLO inference (this returns the list of detection dicts)
+        detections = run_inference_on_image(temp_path, conf_thresh=0.25)
+        
+        # Optionally: save raw detections for debugging
+        # with open("last_raw_detections.json","w") as f: json.dump(detections,f,indent=2)
+        
+        # Pass the detection list directly into the classifier
+        result = classify_json(detections, image_id=file.filename)
+        
+        # Clean up the temporary image
         try:
             os.remove(temp_path)
         except:
             pass
-
-
+        
+        return JSONResponse(content=result)
+    except Exception as e:
+        # cleanup and return error
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Inference or classification failed: {e}")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main_app:app", host="0.0.0.0", port=8000, reload=True)

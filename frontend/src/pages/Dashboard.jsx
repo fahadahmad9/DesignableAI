@@ -1,15 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import "../App.css";
-import { useTheme } from "../context/ThemeContext";
 
-const BACKEND_UPLOAD = import.meta.env.VITE_API_URL
+// Backend upload URL
+const BACKEND_ANALYZE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/analyze-chair`
   : "http://127.0.0.1:8000/analyze-chair";
-
-const AUTH_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/auth`
-  : "http://127.0.0.1:8000/auth";
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -33,38 +28,14 @@ function Dashboard() {
   const [status, setStatus] = useState(
     "No design started. Upload an image, draw a sketch, or choose a template to begin."
   );
-
-  const [resultText, setResultText] = useState("");
+  const [resultData, setResultData] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const inputRef = useRef(null);
-  const userMenuRef = useRef(null);
-
-  const [segments, setSegments] = useState([]);
-  const [result, setResult] = useState(null);
-  const [lastPreview, setLastPreview] = useState(null);
 
   const [chatHistory, setChatHistory] = useState([]);
   const [chatInput, setChatInput] = useState("");
 
-  const linkedData = result?.linked_data || [];
-
-  const detections = Array.isArray(result?.detections)
-    ? result.detections
-    : Array.isArray(result?.results)
-    ? result.results
-    : [];
-
-  const displayPreview = preview || lastPreview;
-
-  const sanitizeHistory = (hist = []) =>
-    hist.filter(
-      (msg) =>
-        msg?.role !== "system" &&
-        !(typeof msg?.content === "string" && msg.content.trim().startsWith("You are DesignableAI"))
-    );
-
-  // Preview Logic
   useEffect(() => {
     if (!file) {
       setPreview(null);
@@ -171,30 +142,6 @@ function Dashboard() {
     setFile(null);
     setImageDataUrl(null);
     setModalOpen(true);
-    setResultText("");
-    // Clear saved state when starting new upload
-    sessionStorage.removeItem('dashboardState');
-  }
-
-  function handleFileChange(event) {
-    const selectedFile = event.target.files && event.target.files[0];
-    setFile(selectedFile || null);
-
-    if (!selectedFile) {
-      setImageDataUrl(null);
-      return;
-    }
-
-    const fileReader = new FileReader();
-    fileReader.onload = () => {
-      const result = typeof fileReader.result === "string" ? fileReader.result : null;
-      setImageDataUrl(result);
-    };
-    fileReader.onerror = () => {
-      console.error("Failed to read image file as data URL");
-      setImageDataUrl(null);
-    };
-    fileReader.readAsDataURL(selectedFile);
   }
 
   function closeModal() {
@@ -271,48 +218,20 @@ function Dashboard() {
       const form = new FormData();
       form.append("file", file);
 
-      const resp = await fetch(BACKEND_UPLOAD, {
+      const resp = await fetch(BACKEND_ANALYZE, {
         method: "POST",
         body: form,
       });
 
       if (!resp.ok) {
         const text = await resp.text();
-        setStatus(`Upload failed: ${resp.status} ${text}`);
+        setStatus(`Error: ${resp.status} ${text}`);
+        setResultData(null);
         return;
       }
 
       const data = await resp.json();
-      console.log("IMAGE ANALYSIS RESULT:", data);
-      const parsed = data?.analysis || data || {};
-
-      if (Array.isArray(data?.history)) {
-        setChatHistory(sanitizeHistory(data.history));
-      }
-
-      const textBody =
-        parsed.summary ||
-        parsed.description ||
-        parsed.text ||
-        parsed.resultText ||
-        "";
-      setResultText(textBody);
-
-      const incomingSegments =
-        (parsed.segments_result && Array.isArray(parsed.segments_result.segments)
-          ? parsed.segments_result.segments
-          : []) || [];
-      const incomingDetections = Array.isArray(parsed.detections)
-        ? parsed.detections
-        : Array.isArray(data?.detections)
-        ? data.detections
-        : Array.isArray(parsed.results)
-        ? parsed.results
-        : [];
-
-      setSegments(incomingSegments.length ? incomingSegments : incomingDetections);
-      setResult(parsed);
-
+      setResultData(data);
       setStatus("Chair analyzed successfully!");
       setModalOpen(false);
 
@@ -328,7 +247,8 @@ function Dashboard() {
       }));
     } catch (err) {
       console.error(err);
-      setStatus(`Upload error: ${err.message}`);
+      setStatus(`Upload failed: ${err.message}`);
+      setResultData(null);
     } finally {
       setLoading(false);
     }
@@ -513,64 +433,142 @@ function Dashboard() {
             <h2 style={{ margin: "6px 0 0", color: "var(--text-primary)" }}>{status}</h2>
           </div>
 
-          {result && (
-            <div
-              className="muted small"
-              style={{
-                padding: "6px 12px",
-                borderRadius: 10,
-                background: "var(--surface-muted)",
-                border: "1px solid var(--border-color)",
-              }}
-            >
-              Text: {resultText ? `${resultText.length} chars` : "0"} · Segments:{" "}
-              {segments.length} · Linked: {linkedData.length} · Detections:{" "}
-              {detections.length}
+          {preview && <img src={preview} alt="preview" className="preview" />}
+
+          {/* ANALYSIS RESULTS DISPLAY */}
+          {resultData && (
+            <div className="analysis-output" style={{ marginTop: "20px" }}>
+              <h3 style={{ marginBottom: "12px" }}>🔍 Analysis Results</h3>
+
+              {/* Identified Chair Type */}
+              {resultData.identified_type && (
+                <div style={{ marginBottom: "20px", padding: "12px", backgroundColor: "#f5f5f5", borderRadius: "6px" }}>
+                  <h4 style={{ marginBottom: "8px", color: "#333" }}>Detected Chair Type:</h4>
+                  <p style={{ fontWeight: "bold", fontSize: "1.2em", color: "#1976d2", margin: 0 }}>
+                    {resultData.identified_type}
+                  </p>
+                </div>
+              )}
+
+              {/* Canonical Parts */}
+              {resultData.canonical_parts && resultData.canonical_parts.length > 0 && (
+                <div style={{ marginBottom: "20px" }}>
+                  <h4 style={{ marginBottom: "10px" }}>Detected Components:</h4>
+                  <ul style={{ margin: "0 0 0 20px", padding: 0 }}>
+                    {resultData.canonical_parts.map((part, i) => (
+                      <li key={i} style={{ marginBottom: "6px" }}>
+                        {part}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Linked Data / Measurements */}
+              {resultData.linked_data && resultData.linked_data.length > 0 && (
+                <div style={{ marginBottom: "20px" }}>
+                  <h4 style={{ marginBottom: "10px" }}>Linked Measurements:</h4>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    {resultData.linked_data.map((item, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          padding: "8px",
+                          backgroundColor: "#fafafa",
+                          borderLeft: "3px solid #1976d2",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        <strong>{item.text}</strong> → {item.segment_class}{" "}
+                        <span style={{ color: "#666", fontSize: "0.9em" }}>
+                          (distance: {item.distance.toFixed(2)})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SAM Segments */}
+              {resultData.segments && resultData.segments.length > 0 && (
+                <div style={{ marginBottom: "20px" }}>
+                  <h4 style={{ marginBottom: "10px" }}>Detected Segments (SAM):</h4>
+                  <div style={{ display: "grid", gap: "10px" }}>
+                    {resultData.segments.map((segment, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          padding: "10px",
+                          backgroundColor: "#fafafa",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                        }}
+                      >
+                        <div style={{ fontWeight: "bold", marginBottom: "6px" }}>
+                          {segment.component_type}
+                        </div>
+                        <div style={{ fontSize: "0.9em", color: "#666" }}>
+                          <strong>BBox:</strong> [{segment.bbox.join(", ")}]
+                        </div>
+                        <div style={{ fontSize: "0.9em", color: "#666" }}>
+                          <strong>Area:</strong> {segment.area} | <strong>IOU:</strong>{" "}
+                          {segment.predicted_iou.toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Raw JSON Response */}
+              <details style={{ marginTop: "20px" }}>
+                <summary style={{ cursor: "pointer", fontWeight: "bold", color: "#1976d2" }}>
+                  View Raw JSON Response
+                </summary>
+                <pre
+                  style={{
+                    marginTop: "12px",
+                    padding: "12px",
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: "6px",
+                    overflow: "auto",
+                    fontSize: "0.85em",
+                  }}
+                >
+                  {JSON.stringify(resultData, null, 2)}
+                </pre>
+              </details>
             </div>
           )}
         </div>
 
-        {/* CHAT AREA */}
-        <div className="chat-container">
-          {chatHistory.length > 0 && (
-            <div className="chat-messages">
-              {chatHistory.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`chat-message ${
-                    msg.role === "assistant" ? "assistant" : "user"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              ))}
+        {/* Chat Window */}
+        <div className="chat-window">
+          {chatHistory.map((msg, i) => (
+            <div key={i} className={`chat-message ${msg.sender}`}>
+              {msg.text}
             </div>
-          )}
+          ))}
+        </div>
 
-          <div className="chat-input-container">
-            <input
-              className="chat-input"
-              placeholder="Ask the design assistant..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendChatMessage();
-                }
-              }}
-            />
-
-            <button className="chat-submit-btn" onClick={sendChatMessage}>
-              <svg className="submit-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
-          </div>
+        {/* Chat Input */}
+        <div className="chatbar">
+          <input
+            className="chat-input"
+            placeholder="Ask the design assistant..."
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") sendChatMessage();
+            }}
+          />
+          <button className="btn chat-send" onClick={sendChatMessage}>
+            ➤
+          </button>
         </div>
       </main>
 
-      {/* UPLOAD MODAL */}
+      {/* Upload Modal */}
       {isModalOpen && (
         <div className="modal-backdrop" role="dialog">
           <div className="modal panel-card">
