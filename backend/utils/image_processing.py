@@ -2,7 +2,6 @@ from google.cloud import vision
 import os
 import cv2
 import torch
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 import matplotlib.pyplot as plt
 import random
 import numpy as np
