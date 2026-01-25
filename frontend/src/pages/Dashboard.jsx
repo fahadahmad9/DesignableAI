@@ -1,32 +1,57 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Sketch from "./Sketch";
 import "../App.css";
 
 const BACKEND_UPLOAD = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/upload/`
-  : "http://127.0.0.1:8000/upload/";
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/analyze-chair`
+  : "http://127.0.0.1:8000/analyze-chair";
 
 function Dashboard() {
+  const navigate = useNavigate();
+
   const [isSidebarExpanded, setSidebarExpanded] = useState(true);
   const [isModalOpen, setModalOpen] = useState(false);
   const [isSketchOpen, setSketchOpen] = useState(false);
+
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+
   const [status, setStatus] = useState(
     "No design started. Upload an image, draw a sketch, or choose a template to begin."
   );
+
   const [resultText, setResultText] = useState("");
   const [details, setDetails] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const inputRef = useRef(null);
+
   const [segments, setSegments] = useState([]);
   const [result, setResult] = useState(null);
+  const [lastPreview, setLastPreview] = useState(null);
 
   const [chatHistory, setChatHistory] = useState([]);
   const [chatInput, setChatInput] = useState("");
 
   const linkedData = result?.linked_data || [];
 
+  const detections = Array.isArray(result?.detections)
+    ? result.detections
+    : Array.isArray(result?.results)
+    ? result.results
+    : [];
+
+  const displayPreview = preview || lastPreview;
+
+  const sanitizeHistory = (hist = []) =>
+    hist.filter(
+      (msg) =>
+        msg?.role !== "system" &&
+        !(typeof msg?.content === "string" && msg.content.trim().startsWith("You are DesignableAI"))
+    );
+
+  // Preview Logic
   useEffect(() => {
     if (!file) {
       setPreview(null);
@@ -37,6 +62,11 @@ function Dashboard() {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  useEffect(() => {
+    if (preview) setLastPreview(preview);
+  }, [preview]);
+
+  // Sidebar & Modal Controls
   function openModal() {
     setFile(null);
     setModalOpen(true);
@@ -59,29 +89,67 @@ function Dashboard() {
     setSidebarExpanded(!isSidebarExpanded);
   }
 
-  function sendChatMessage() {
-    if (!chatInput || !chatInput.trim()) return;
+  // Chat Messaging
+  async function sendChatMessage() {
+    if (!chatInput.trim()) return;
 
-    const message = {
-      text: chatInput.trim(),
-      sender: "user",
-    };
+    const userMessage = { role: "user", content: chatInput.trim() };
 
-    setChatHistory((prev) => [...prev, message]);
+    setChatHistory((prev) => [...prev, userMessage]);
+    const newHistory = [...chatHistory, userMessage];
     setChatInput("");
-    setStatus(`Message sent: ${message.text}`);
+
+    setStatus("Thinking...");
+
+    try {
+      const resp = await fetch(BACKEND_UPLOAD, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage.content,
+          history: newHistory,
+        }),
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        setStatus(`Chat failed: ${resp.status} ${text}`);
+        return;
+      }
+
+      const data = await resp.json();
+      console.log("CHAT RESPONSE:", data);
+
+      const assistantReply = {
+        role: "assistant",
+        content: data.assistant_reply,
+      };
+
+      const filteredHistory = sanitizeHistory([...newHistory, assistantReply]);
+      setChatHistory(filteredHistory);
+      setStatus("Message received");
+    } catch (err) {
+      console.error(err);
+      setStatus(`Chat error: ${err.message}`);
+    }
   }
 
+  // Upload API
   async function upload() {
     if (!file) return setStatus("Please choose a file first.");
+
     setLoading(true);
-    setStatus("Uploading...");
+    setStatus("Analyzing chair...");
 
     try {
       const form = new FormData();
-      form.append("file", file, file.name);
+      form.append("file", file);
 
-      const resp = await fetch(BACKEND_UPLOAD, { method: "POST", body: form });
+      const resp = await fetch(BACKEND_UPLOAD, {
+        method: "POST",
+        body: form,
+      });
+
       if (!resp.ok) {
         const text = await resp.text();
         setStatus(`Upload failed: ${resp.status} ${text}`);
@@ -89,31 +157,40 @@ function Dashboard() {
       }
 
       const data = await resp.json();
-      if (data.error) {
-        setStatus(`Error: ${data.error}`);
-        return;
+      console.log("IMAGE ANALYSIS RESULT:", data);
+      const parsed = data?.analysis || data || {};
+
+      if (Array.isArray(data?.history)) {
+        setChatHistory(sanitizeHistory(data.history));
       }
 
-      setStatus(
-        `Last uploaded: ${file.name} (${data.text_result?.total_words || 0} words)`
-      );
-      setResultText(data.text_result?.full_text || "No text found");
-      setDetails(
-        Array.isArray(data.text_result?.details)
-          ? data.text_result.details
-          : []
-      );
-      setSegments(
-        Array.isArray(data.segments_result?.segments)
-          ? data.segments_result.segments
-          : []
-      );
+      const textBody =
+        parsed.summary ||
+        parsed.description ||
+        parsed.text ||
+        parsed.resultText ||
+        "";
+      setResultText(textBody);
+      setDetails(parsed.details || []);
 
-      setResult(data);
+      const incomingSegments =
+        (parsed.segments_result && Array.isArray(parsed.segments_result.segments)
+          ? parsed.segments_result.segments
+          : []) || [];
+      const incomingDetections = Array.isArray(parsed.detections)
+        ? parsed.detections
+        : Array.isArray(parsed.results)
+        ? parsed.results
+        : [];
+
+      setSegments(incomingSegments.length ? incomingSegments : incomingDetections);
+      setResult(parsed);
+
+      setStatus("Chair analyzed successfully!");
       setModalOpen(false);
     } catch (err) {
-      setStatus(`Upload error: ${err.message || err}`);
       console.error(err);
+      setStatus(`Upload error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -121,7 +198,12 @@ function Dashboard() {
 
   return (
     <div className="app-root">
-      <aside className={`sidebar ${isSidebarExpanded ? 'expanded' : 'collapsed'}`}>
+      {/* SIDEBAR */}
+      <aside
+        className={`sidebar ${
+          isSidebarExpanded ? "expanded" : "collapsed"
+        }`}
+      >
         <button className="sidebar-toggle" onClick={toggleSidebar}>
           {isSidebarExpanded ? (
             <svg className="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,6 +215,7 @@ function Dashboard() {
             </svg>
           )}
         </button>
+
         <div className="sidebar-header">
           <div className="logo-container">
             <div className="logo-icon">D</div>
@@ -146,42 +229,59 @@ function Dashboard() {
         </div>
 
         <nav className="sidebar-nav">
-          <a href="#" className="nav-item active">
+          <a
+            href="#"
+            className="nav-item active"
+            onClick={(e) => {
+              e.preventDefault();
+              openModal();
+            }}
+          >
             <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4" />
             </svg>
-            {isSidebarExpanded && <span>Dashboard</span>}
+            {isSidebarExpanded && <span>Upload</span>}
           </a>
-          <a href="#" className="nav-item" onClick={(e) => { e.preventDefault(); openSketch(); }}>
+
+          <a
+            href="#"
+            className="nav-item"
+            onClick={(e) => {
+              e.preventDefault();
+              openSketch();
+            }}
+          >
             <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
             {isSidebarExpanded && <span>Canvas</span>}
           </a>
-          <a href="#" className="nav-item">
+
+          <a
+            href="#"
+            className="nav-item"
+            onClick={(e) => {
+              e.preventDefault();
+              setStatus("Template gallery coming soon");
+            }}
+          >
             <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            {isSidebarExpanded && <span>Projects</span>}
-          </a>
-          <a href="#" className="nav-item">
-            <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            {isSidebarExpanded && <span>Settings</span>}
-          </a>
-          <a href="#" className="nav-item">
-            <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {isSidebarExpanded && <span>Help</span>}
+            {isSidebarExpanded && <span>Templates</span>}
           </a>
         </nav>
 
         {isSidebarExpanded && (
           <div className="sidebar-footer">
-            <a href="#" className="back-link">
+            <a
+              href="/"
+              className="back-link"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/");
+              }}
+            >
               <svg className="back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -191,23 +291,103 @@ function Dashboard() {
         )}
       </aside>
 
-      <main className={`main-content ${isSidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
-         <div className="content-header">
+      {/* MAIN CONTENT */}
+      <main
+        className={`main-content ${
+          isSidebarExpanded ? "sidebar-expanded" : "sidebar-collapsed"
+        }`}
+      >
+        {/* HEADER */}
+        <div
+          className="content-header"
+          style={{
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <div className="muted small">Upload status</div>
+            <h2 style={{ margin: "6px 0 0", color: "#111" }}>{status}</h2>
+          </div>
+
+          {result && (
+            <div
+              className="muted small"
+              style={{
+                padding: "6px 12px",
+                borderRadius: 10,
+                background: "#f3f4f6",
+                border: "1px solid #e5e5e5",
+              }}
+            >
+              Text: {resultText ? `${resultText.length} chars` : "0"} · Segments:{" "}
+              {segments.length} · Linked: {linkedData.length} · Detections:{" "}
+              {detections.length}
+            </div>
+          )}
         </div>
 
-        <div className="content-sections">
+        {/* CONTENT GRID (panels) */}
+        <div
+          className="content-sections"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {/* Uploaded Image */}
+          <div
+            className="panel-card"
+            style={{ minHeight: 180, maxWidth: 500, justifySelf: "start" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>Uploaded image</div>
+              {file && <span className="muted small">{file.name}</span>}
+            </div>
+            {displayPreview ? (
+              <img
+                src={displayPreview}
+                alt="Uploaded preview"
+                style={{
+                  width: "100%",
+                  maxHeight: 180,
+                  objectFit: "contain",
+                  borderRadius: 12,
+                  border: "1px solid #e5e5e5",
+                  background: "#f9f9f9",
+                }}
+              />
+            ) : (
+              <div className="muted small">No image selected yet.</div>
+            )}
+          </div>
         </div>
 
+        {/* CHAT AREA */}
         <div className="chat-container">
           {chatHistory.length > 0 && (
             <div className="chat-messages">
               {chatHistory.map((msg, i) => (
-                <div key={i} className={`chat-message ${msg.sender}`}>
-                  {msg.text}
+                <div
+                  key={i}
+                  className={`chat-message ${
+                    msg.role === "assistant" ? "assistant" : "user"
+                  }`}
+                >
+                  {msg.content}
                 </div>
               ))}
             </div>
           )}
+
           <div className="chat-input-container">
             <input
               className="chat-input"
@@ -221,6 +401,7 @@ function Dashboard() {
                 }
               }}
             />
+
             <button className="chat-submit-btn" onClick={sendChatMessage}>
               <svg className="submit-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -230,6 +411,7 @@ function Dashboard() {
         </div>
       </main>
 
+      {/* UPLOAD MODAL */}
       {isModalOpen && (
         <div className="modal-backdrop" role="dialog">
           <div className="modal panel-card">
@@ -243,6 +425,7 @@ function Dashboard() {
             <div className="muted small">
               Choose an image (jpg, png). Max file size depends on backend.
             </div>
+
             <input
               ref={inputRef}
               className="file-input"
@@ -253,10 +436,33 @@ function Dashboard() {
               }
             />
 
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            {preview && (
+              <div style={{ marginTop: 20, textAlign: "center" }}>
+                <img
+                  src={preview}
+                  alt="Preview"
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: 320,
+                    borderRadius: 14,
+                    border: "1px solid #e5e5e5",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+                  }}
+                />
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: preview ? 20 : 12,
+              }}
+            >
               <button className="btn" onClick={upload} disabled={loading}>
-                {loading ? "Uploading..." : "Upload & Extract"}
+                {loading ? "Uploading..." : "Upload & Analyze"}
               </button>
+
               <button className="btn ghost" onClick={closeModal}>
                 Cancel
               </button>
@@ -269,6 +475,7 @@ function Dashboard() {
         </div>
       )}
 
+      {/* SKETCH MODAL */}
       {isSketchOpen && (
         <div className="sketch-modal-backdrop" role="dialog">
           <div className="sketch-modal-content">

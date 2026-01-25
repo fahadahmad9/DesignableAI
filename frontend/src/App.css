@@ -11,67 +11,62 @@ html, body, #root {
 }
 
 :root {
-  --accent-blue: #3b82f6;
-  --accent-blue-dark: #2563eb;
+  --accent-blue: #a3e635; /* landing accent */
+  --accent-blue-dark: #84cc16;
   --sidebar-bg: #ffffff;
-  --main-bg: #f9f9f9;
+  --main-bg: #fafafa;
   --card-bg: #ffffff;
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --border-color: #e5e7eb;
-  --icon-bg: #f3f4f6;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --text-primary: #1a1a1a;
+  --text-secondary: #555555;
+  --text-muted: #8a8a8a;
+  --border-color: #e5e5e5;
+  --icon-bg: #f5f5f5;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.08);
 }
 
 .app-root {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 25%, #10b981 50%, #06b6d4 75%, #3b82f6 100%);
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
+  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
   color: var(--text-primary);
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   position: relative;
+  overflow: hidden;
 }
 
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+.app-root::before,
+.app-root::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: #f2f0ee;
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+  animation: bubbleDrift1 14s ease-in-out infinite alternate;
 }
 
 .app-root::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, 
-    rgba(59, 130, 246, 0.2) 0%, 
-    rgba(6, 182, 212, 0.25) 25%, 
-    rgba(16, 185, 129, 0.3) 50%, 
-    rgba(6, 182, 212, 0.25) 75%, 
-    rgba(59, 130, 246, 0.2) 100%);
-  backdrop-filter: blur(100px);
-  -webkit-backdrop-filter: blur(100px);
-  z-index: 0;
+  width: 520px;
+  height: 520px;
+  top: -140px;
+  left: -120px;
+  animation-name: bubbleDrift1;
+}
+
+.app-root::after {
+  width: 640px;
+  height: 640px;
+  bottom: -220px;
+  right: -180px;
+  animation-name: bubbleDrift2;
 }
 
 /* Sidebar Styles */
 .sidebar {
   width: 240px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
+  background: #ffffff;
   position: fixed;
   left: 16px;
   top: 16px;
@@ -81,8 +76,8 @@ html, body, #root {
   z-index: 100;
   display: flex;
   flex-direction: column;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e5e5;
   border-radius: 20px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
@@ -90,18 +85,11 @@ html, body, #root {
 
 .sidebar.collapsed {
   width: 70px;
-  background: transparent;
+  background: #ffffff;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border: none;
-  box-shadow: none;
-}
-
-.sidebar.expanded,
-.sidebar.collapsed {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
 }
 
 .sidebar-toggle {
@@ -112,16 +100,16 @@ html, body, #root {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #f5f5f5;
+  border: 1px solid #e5e5e5;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
   z-index: 10;
+  position: absolute;
+  overflow: hidden;
 }
 
 .sidebar.expanded .sidebar-toggle {
@@ -131,25 +119,42 @@ html, body, #root {
 }
 
 .sidebar-toggle:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: #ededed;
   transform: scale(1.05);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+}
+
+.sidebar-toggle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 2px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  box-shadow: 0 6px 0 #1a1a1a, 0 -6px 0 #1a1a1a;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+  z-index: 0;
+}
+
+.sidebar-toggle:hover::before {
+  transform: translateY(-1px);
 }
 
 .toggle-icon {
   width: 18px;
   height: 18px;
   color: var(--text-primary);
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar-header {
   padding: 24px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid #e5e5e5;
   transition: padding 0.3s ease;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  background: #ffffff;
 }
 
 .sidebar.collapsed .sidebar-header {
@@ -162,11 +167,15 @@ html, body, #root {
 .sidebar.collapsed .logo-container {
   justify-content: center;
   width: 100%;
-  display: none;
+  display: flex;
 }
 
 .sidebar.collapsed .logo-icon {
   margin: 0 auto;
+  display: flex;
+}
+
+.sidebar.collapsed .logo-text {
   display: none;
 }
 
@@ -181,14 +190,14 @@ html, body, #root {
   height: 40px;
   border-radius: 8px;
   background: var(--accent-blue);
-  color: white;
+  color: #1a1a1a;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 20px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(163, 230, 53, 0.35);
 }
 
 .logo-text {
@@ -201,14 +210,12 @@ html, body, #root {
   font-size: 18px;
   color: var(--text-primary);
   line-height: 1.2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .logo-subtitle {
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .sidebar-nav {
@@ -218,14 +225,14 @@ html, body, #root {
   flex-direction: column;
   gap: 4px;
   transition: padding 0.3s ease;
-  background: transparent;
+  background: #ffffff;
 }
 
 .sidebar.collapsed .sidebar-nav {
   padding: 16px 8px;
   align-items: center;
   gap: 8px;
-  display: none;
+  display: flex;
 }
 
 .nav-item {
@@ -242,9 +249,8 @@ html, body, #root {
   cursor: pointer;
   position: relative;
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: #f7f7f7;
+  border: 1px solid transparent;
 }
 
 .sidebar.collapsed .nav-item {
@@ -260,17 +266,15 @@ html, body, #root {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: #f0f0f0;
   color: var(--text-primary);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  border-color: #e5e5e5;
 }
 
 .nav-item.active {
-  background: rgba(59, 130, 246, 0.2);
-  color: var(--accent-blue);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  background: #eef7d3;
+  color: #4d7c0f;
+  border-color: #dcebb0;
 }
 
 .nav-item.active::before {
@@ -297,11 +301,9 @@ html, body, #root {
 
 .sidebar-footer {
   padding: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid #e5e5e5;
   transition: padding 0.3s ease;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  background: #ffffff;
 }
 
 .sidebar.collapsed .sidebar-footer {
@@ -317,7 +319,6 @@ html, body, #root {
   font-size: 14px;
   font-weight: 500;
   transition: color 0.2s ease;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .back-link:hover {
@@ -342,6 +343,18 @@ html, body, #root {
 
 .main-content.sidebar-collapsed {
   margin-left: 102px;
+}
+
+@keyframes bubbleDrift1 {
+  0% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(18px, -12px, 0); }
+  100% { transform: translate3d(-12px, 14px, 0); }
+}
+
+@keyframes bubbleDrift2 {
+  0% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-16px, 18px, 0); }
+  100% { transform: translate3d(14px, -10px, 0); }
 }
 
 .content-header {
@@ -385,8 +398,6 @@ html, body, #root {
   max-width: 700px;
   margin: 0 auto;
   background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   border: none;
   box-shadow: none;
   border-radius: 20px;
@@ -456,23 +467,19 @@ html, body, #root {
 
 .chat-message.user {
   align-self: flex-end;
-  background: rgba(59, 130, 246, 0.25);
-  color: #1e3a8a;
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: #eef7d3;
+  color: #1a1a1a;
+  border: 1px solid #dcebb0;
   font-weight: 500;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .chat-message.assistant {
   align-self: flex-start;
-  background: rgba(255, 255, 255, 0.95);
+  background: #ffffff;
   color: #1a1a1a;
-  border: 1px solid rgba(229, 231, 235, 0.6);
+  border: 1px solid #e5e5e5;
   font-weight: 500;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
@@ -481,22 +488,18 @@ html, body, #root {
   gap: 12px;
   padding: 16px 24px;
   align-items: center;
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
 }
 
 .chat-input {
   flex: 1;
   padding: 12px 16px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid #e5e5e5;
+  background: #f9f9f9;
   font-size: 14px;
   color: #1a1a1a;
   transition: all 0.2s ease;
@@ -509,9 +512,9 @@ html, body, #root {
 
 .chat-input:focus {
   outline: none;
-  border-color: rgba(59, 130, 246, 0.6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-  background: rgba(255, 255, 255, 0.4);
+  border-color: #d0d0d0;
+  box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.2);
+  background: #ffffff;
 }
 
 .chat-submit-btn {
@@ -520,13 +523,14 @@ html, body, #root {
   border-radius: 12px;
   background: var(--accent-blue);
   border: none;
-  color: white;
+  color: #1a1a1a;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  box-shadow: 0 10px 25px rgba(163, 230, 53, 0.35);
 }
 
 .chat-submit-btn:hover {
@@ -647,44 +651,79 @@ html, body, #root {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(17, 24, 39, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
 }
 
 .modal {
-  background: var(--card-bg);
-  padding: 24px;
-  border-radius: 16px;
-  min-width: 400px;
-  max-width: 600px;
-  box-shadow: var(--shadow-lg);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
+  padding: 32px 32px 26px;
+  border-radius: 22px;
+  min-width: 520px;
+  max-width: 760px;
+  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.14);
+  border: 1px solid #e7e7e7;
 }
 
 .modal-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #ededed;
 }
 
 .modal-title {
   font-weight: 700;
-  font-size: 20px;
-  color: var(--text-primary);
+  font-size: 22px;
+  color: #1a1a1a;
+  letter-spacing: -0.2px;
 }
 
 .file-input {
   display: block;
-  margin-top: 12px;
+  margin-top: 16px;
   width: 100%;
-  padding: 8px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-primary);
+  padding: 14px 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  color: #1a1a1a;
+  background: #f9f9f9;
+  transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+
+.file-input::file-selector-button {
+  padding: 8px 16px;
+  margin-right: 12px;
+  border: none;
+  border-radius: 10px;
+  background: #84cc16;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.file-input::file-selector-button:hover {
+  background: #65a30d;
+}
+
+.file-input:hover {
+  border-color: #84cc16;
+  background: #ffffff;
+}
+
+.file-input:focus {
+  outline: none;
+  border-color: #d0d0d0;
+  box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.2);
+  background: #ffffff;
 }
 
 .btn {
@@ -705,6 +744,28 @@ html, body, #root {
 .btn:hover {
   background: var(--accent-blue-dark);
   border-color: var(--accent-blue-dark);
+}
+
+.modal .btn,
+.modal .btn.ghost {
+  border-radius: 14px;
+  padding: 13px 20px;
+}
+
+.modal .btn.ghost {
+  border-color: #e5e5e5;
+  background: #fafafa;
+}
+
+.modal .btn.ghost:hover {
+  background: #f0f0f0;
+  color: #1a1a1a;
+}
+
+.modal .muted.small {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  color: #666;
 }
 
 .btn:disabled {
@@ -757,8 +818,8 @@ html, body, #root {
 .sketch-modal-content {
   position: relative;
   width: 100%;
-  max-width: 1300px;
-  height: 90vh;
+  max-width: 1000px;
+  height: 75vh;
   background: var(--card-bg);
   border-radius: 16px;
   overflow: hidden;

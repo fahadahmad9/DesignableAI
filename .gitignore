@@ -34,3 +34,16 @@ Thumbs.db
 # --- Upload folders / temporary data ---
 uploads/
 tmp/
+
+# --- Roboflow & ML Models ---
+Roboflow/
+*.pt
+*.pth
+*.onnx
+*.weights
+runs/
+weights/
+
+# --- API Keys & Credentials ---
+**/credentials.json
+**/service-account*.json

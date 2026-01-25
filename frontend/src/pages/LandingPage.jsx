@@ -53,20 +53,6 @@ function LandingPage() {
               </button>
               <button className="btn-secondary large">Watch Demo</button>
             </div>
-            <div className="hero-stats">
-              <div className="stat">
-                <div className="stat-number">10K+</div>
-                <div className="stat-label">Designers</div>
-              </div>
-              <div className="stat">
-                <div className="stat-number">500K+</div>
-                <div className="stat-label">Designs Created</div>
-              </div>
-              <div className="stat">
-                <div className="stat-number">4.9★</div>
-                <div className="stat-label">Rating</div>
-              </div>
-            </div>
           </div>
           <div className="hero-right">
             <div className="sketch-preview">

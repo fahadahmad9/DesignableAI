@@ -12,8 +12,8 @@ export default function Sketch() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    canvas.width = 900;
-    canvas.height = 600;
+    canvas.width = 700;
+    canvas.height = 450;
     
     const context = canvas.getContext("2d");
     context.lineCap = "round";
