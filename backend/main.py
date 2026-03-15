@@ -70,6 +70,9 @@ async def analyze_chair(request: Request, file: UploadFile = None):
         # Classification (NO measurement param!)
         classification = classify_json(detections, image_id=file.filename)
 
+        # Attach detections (with masks) for frontend visualization
+        classification["detections"] = detections
+
         # Attach measurements here
         classification["measurements"] = measurements
         classification["ocr_lines"] = ocr_lines

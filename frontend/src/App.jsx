@@ -4,6 +4,7 @@ import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Sketch from "./pages/Sketch";
 import LandingPage from "./pages/Landingpage"; // Corrected casing
+import VisualizeChair from "./components/VisualizeChair";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/sketch" element={<Sketch />} />
+        <Route path="/visualize" element={<VisualizeChair />} />
       </Routes>
     </Router>
   );

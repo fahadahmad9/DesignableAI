@@ -4,6 +4,8 @@ import numpy as np
 from typing import List, Dict
 from PIL import Image
 import os
+import base64
+import io
 
 # Path to your weights (update if needed)
 #MODEL_PATH = "Roboflow/yolo_chair_training/v13/weights/best.pt"
@@ -71,19 +73,29 @@ def run_inference_on_image(image_path: str, conf_thresh: float = 0.25) -> List[D
 
             # mask area proxy (if masks exist)
             mask_area = 0
+            mask_base64 = None
             if hasattr(r, "masks") and r.masks is not None:
                 try:
-                    mask = r.masks[i]
-                    mask_area = int(np.sum(mask.data[0].cpu().numpy()))
+                    mask_data = r.masks.data[i].cpu().numpy()
+                    mask_area = int(np.sum(mask_data))
+
+                    # Convert mask to PNG base64 for client-side visualization
+                    mask_img = (mask_data > 0.5).astype(np.uint8) * 255
+                    pil = Image.fromarray(mask_img)
+                    buf = io.BytesIO()
+                    pil.save(buf, format="PNG")
+                    mask_base64 = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
                 except Exception:
                     mask_area = 0
+                    mask_base64 = None
 
             extracted_data.append({
                 "id": len(extracted_data) + 1,
                 "part_name": class_name,
                 "confidence": round(conf, 4),
                 "normalized_bbox_xywh": [round(x, 4) for x in xywhn],
-                "mask_pixel_area_proxy": int(mask_area)
+                "mask_pixel_area_proxy": int(mask_area),
+                "mask_base64": mask_base64
             })
 
     return extracted_data

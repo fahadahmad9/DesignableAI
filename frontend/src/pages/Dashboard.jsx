@@ -16,13 +16,13 @@ function Dashboard() {
 
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [imageDataUrl, setImageDataUrl] = useState(null);
 
   const [status, setStatus] = useState(
     "No design started. Upload an image, draw a sketch, or choose a template to begin."
   );
 
   const [resultText, setResultText] = useState("");
-  const [details, setDetails] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const inputRef = useRef(null);
@@ -66,11 +66,54 @@ function Dashboard() {
     if (preview) setLastPreview(preview);
   }, [preview]);
 
+  // Restore state from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const savedData = sessionStorage.getItem('dashboardState');
+      if (savedData) {
+        const { result, segments, resultText, lastPreview, imageDataUrl, status, chatHistory } = JSON.parse(savedData);
+        if (result) setResult(result);
+        if (segments) setSegments(segments);
+        if (resultText) setResultText(resultText);
+        if (lastPreview) setLastPreview(lastPreview);
+        if (imageDataUrl) setImageDataUrl(imageDataUrl);
+        if (status) setStatus(status);
+        if (chatHistory) setChatHistory(chatHistory);
+      }
+    } catch (err) {
+      console.error('Failed to restore dashboard state:', err);
+    }
+  }, []);
+
   // Sidebar & Modal Controls
   function openModal() {
     setFile(null);
+    setImageDataUrl(null);
     setModalOpen(true);
     setResultText("");
+    // Clear saved state when starting new upload
+    sessionStorage.removeItem('dashboardState');
+  }
+
+  function handleFileChange(event) {
+    const selectedFile = event.target.files && event.target.files[0];
+    setFile(selectedFile || null);
+
+    if (!selectedFile) {
+      setImageDataUrl(null);
+      return;
+    }
+
+    const fileReader = new FileReader();
+    fileReader.onload = () => {
+      const result = typeof fileReader.result === "string" ? fileReader.result : null;
+      setImageDataUrl(result);
+    };
+    fileReader.onerror = () => {
+      console.error("Failed to read image file as data URL");
+      setImageDataUrl(null);
+    };
+    fileReader.readAsDataURL(selectedFile);
   }
 
   function closeModal() {
@@ -171,7 +214,6 @@ function Dashboard() {
         parsed.resultText ||
         "";
       setResultText(textBody);
-      setDetails(parsed.details || []);
 
       const incomingSegments =
         (parsed.segments_result && Array.isArray(parsed.segments_result.segments)
@@ -179,6 +221,8 @@ function Dashboard() {
           : []) || [];
       const incomingDetections = Array.isArray(parsed.detections)
         ? parsed.detections
+        : Array.isArray(data?.detections)
+        ? data.detections
         : Array.isArray(parsed.results)
         ? parsed.results
         : [];
@@ -188,6 +232,17 @@ function Dashboard() {
 
       setStatus("Chair analyzed successfully!");
       setModalOpen(false);
+
+      // Save state to sessionStorage
+      sessionStorage.setItem('dashboardState', JSON.stringify({
+        result: parsed,
+        segments: incomingSegments.length ? incomingSegments : incomingDetections,
+        resultText: textBody,
+        lastPreview: preview,
+        imageDataUrl: imageDataUrl,
+        status: "Chair analyzed successfully!",
+        chatHistory: sanitizeHistory(chatHistory)
+      }));
     } catch (err) {
       console.error(err);
       setStatus(`Upload error: ${err.message}`);
@@ -368,7 +423,29 @@ function Dashboard() {
             ) : (
               <div className="muted small">No image selected yet.</div>
             )}
+            
+            {result && (imageDataUrl || displayPreview) && (
+              <button
+                className="btn"
+                onClick={() => {
+                  navigate("/visualize", {
+                    state: {
+                      imageUrl: imageDataUrl || displayPreview,
+                      segments: segments,
+                      result: result,
+                    },
+                  });
+                }}
+                style={{
+                  marginTop: 12,
+                  width: "100%",
+                }}
+              >
+                Visualize Chair
+              </button>
+            )}
           </div>
+
         </div>
 
         {/* CHAT AREA */}
@@ -431,9 +508,7 @@ function Dashboard() {
               className="file-input"
               type="file"
               accept="image/*"
-              onChange={(e) =>
-                setFile(e.target.files && e.target.files[0])
-              }
+              onChange={handleFileChange}
             />
 
             {preview && (

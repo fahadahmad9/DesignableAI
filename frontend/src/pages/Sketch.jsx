@@ -19,7 +19,7 @@ export default function Sketch() {
     context.lineCap = "round";
     context.lineJoin = "round";
     context.strokeStyle = "black";
-    context.lineWidth = brushSize;
+    context.lineWidth = 3;
     contextRef.current = context;
 
     // Fill with white background
@@ -277,6 +277,7 @@ export default function Sketch() {
                 </svg>
                 <span>Clear</span>
               </button>
+
             </div>
           </div>
         </div>
