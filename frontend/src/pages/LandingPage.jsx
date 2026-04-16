@@ -1,13 +1,26 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/LandingPage.css";
+import { useTheme } from "../context/ThemeContext";
 
 function LandingPage() {
   const navigate = useNavigate();
   const [isHovering, setIsHovering] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+
+  const isUserAuthenticated = () => {
+    const userId = localStorage.getItem("user_id");
+    const username = localStorage.getItem("username");
+    const token = localStorage.getItem("token");
+    return Boolean(userId || username || token);
+  };
 
   const handleGetStarted = () => {
-    navigate("/dashboard");
+    navigate(isUserAuthenticated() ? "/dashboard" : "/signup");
+  };
+
+  const handleLogin = () => {
+    navigate(isUserAuthenticated() ? "/dashboard" : "/login");
   };
 
   return (
@@ -15,9 +28,8 @@ function LandingPage() {
       {/* Header */}
       <header className="header">
         <div className="header-content">
-          <div className="logo">
-            <div className="logo-icon">D</div>
-            <span className="logo-text">DESIGNABLE</span>
+          <div className="logo" aria-label="Designable AI home">
+            <span className="logo-text">Designable AI</span>
           </div>
           <nav className="nav-menu">
             <a href="#features">Features</a>
@@ -25,7 +37,10 @@ function LandingPage() {
             <a href="#about">About</a>
           </nav>
           <div className="header-actions">
-            <button className="btn-text">Log In</button>
+            <button className="btn-theme" onClick={toggleTheme}>
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </button>
+            <button className="btn-text" onClick={handleLogin}>Log In</button>
             <button className="btn-primary" onClick={handleGetStarted}>
               Get Started
             </button>
@@ -372,9 +387,7 @@ function LandingPage() {
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </button>
-            <button className="btn-secondary large">Schedule Demo</button>
           </div>
-          <p className="cta-note">No credit card required · Free trial available</p>
         </div>
       </section>
 
@@ -383,64 +396,20 @@ function LandingPage() {
         <div className="footer-content">
           <div className="footer-brand">
             <div className="logo">
-              <div className="logo-icon">D</div>
-              <span className="logo-text">DESIGNABLE</span>
+              <span className="logo-text">Designable AI</span>
             </div>
             <p className="footer-tagline">
-              AI-powered design partner for architects and interior designers.
+              AI-powered design workspace.
             </p>
           </div>
-          <div className="footer-links">
-            <div className="footer-column">
-              <h4>Product</h4>
-              <a href="#features">Features</a>
-              <a href="#pricing">Pricing</a>
-              <a href="#api">API</a>
-              <a href="#changelog">Changelog</a>
-            </div>
-            <div className="footer-column">
-              <h4>Company</h4>
-              <a href="#about">About</a>
-              <a href="#blog">Blog</a>
-              <a href="#careers">Careers</a>
-              <a href="#press">Press</a>
-            </div>
-            <div className="footer-column">
-              <h4>Resources</h4>
-              <a href="#docs">Documentation</a>
-              <a href="#tutorials">Tutorials</a>
-              <a href="#community">Community</a>
-              <a href="#support">Support</a>
-            </div>
-            <div className="footer-column">
-              <h4>Legal</h4>
-              <a href="#privacy">Privacy</a>
-              <a href="#terms">Terms</a>
-              <a href="#security">Security</a>
-            </div>
+          <div className="footer-links minimal">
+            <a href="#features">Features</a>
+            <a href="#about">About</a>
+            <a href="#privacy">Privacy</a>
           </div>
         </div>
         <div className="footer-bottom">
           <p>© 2024 Designable AI. All rights reserved.</p>
-          <div className="social-links">
-            <a href="#twitter" aria-label="Twitter">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z" />
-              </svg>
-            </a>
-            <a href="#instagram" aria-label="Instagram">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37zm1.5-4.87h.01" />
-              </svg>
-            </a>
-            <a href="#linkedin" aria-label="LinkedIn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
-                <circle cx="4" cy="4" r="2" />
-              </svg>
-            </a>
-          </div>
         </div>
       </footer>
     </div>

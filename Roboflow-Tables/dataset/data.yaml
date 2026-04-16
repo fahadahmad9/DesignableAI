@@ -1,0 +1,6 @@
+train: C:\Users\fahad\Documents\DesignableAI\Roboflow-Tables\dataset\train\images
+val: C:\Users\fahad\Documents\DesignableAI\Roboflow-Tables\dataset\valid\images
+test: C:\Users\fahad\Documents\DesignableAI\Roboflow-Tables\dataset\test\images
+
+nc: 6
+names: ['table_drawer', 'table_legs', 'table_shelf', 'table_support', 'table_top', 'table_wheels']

@@ -2,38 +2,78 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/auth.css";
 
+const AUTH_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/auth`
+  : "http://127.0.0.1:8000/auth";
+
 function Login() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      // TODO: connect with FastAPI backend
-      // const res = await axios.post("/login", { email, password });
+      const response = await fetch(`${AUTH_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // mock login success
-      localStorage.setItem("token", "dummy_jwt_token");
+      if (!response.ok) {
+        let message = "Login failed. Please try again.";
+
+        try {
+          const data = await response.json();
+          if (typeof data?.detail === "string") {
+            message = data.detail;
+          }
+        } catch {
+          // Fallback to generic message if response is not JSON.
+        }
+
+        setError(message);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data?.user_id) {
+        localStorage.setItem("user_id", String(data.user_id));
+      }
+      if (data?.username) {
+        localStorage.setItem("username", data.username);
+      }
+      localStorage.setItem("email", data?.email || email);
+
 
       navigate("/dashboard");
     } catch (err) {
-      console.error(err);
-      alert("Login failed");
+      setError(err?.message || "Network error. Please check your connection.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="auth-container">
-      <div className="auth-logo">DesignableAI</div>
+      <Link to="/" className="auth-logo" aria-label="Back to landing page">
+        DesignableAI
+      </Link>
       
       <div className="auth-card">
         <h1 className="auth-title">Welcome Back</h1>
         <p className="auth-subtitle">Log in to continue designing</p>
 
         <form onSubmit={handleLogin}>
+          {error && <p className="auth-error">{error}</p>}
+
           <div className="auth-form-group">
             <label className="auth-label">Email Address</label>
             <input
@@ -58,8 +98,8 @@ function Login() {
             />
           </div>
 
-          <button type="submit" className="auth-btn login">
-            Login
+          <button type="submit" className="auth-btn login" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
           </button>
 
           <p className="auth-footer">

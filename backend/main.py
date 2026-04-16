@@ -7,6 +7,11 @@ import json
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
+from database.connection import engine
+from database.models import Base
+from auth.routes import router as auth_router
+from design_analysis import router as design_analysis_router
 
 from yolov8_inference import run_inference_on_image
 from chair_classification import classify_json
@@ -15,6 +20,7 @@ from llama_client import call_llama
 
 
 app = FastAPI(title="DesignableAI - Unified Endpoint")
+Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +29,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router, prefix="/auth")
+app.include_router(design_analysis_router)
 
 
 @app.post("/analyze-chair")
@@ -69,9 +78,6 @@ async def analyze_chair(request: Request, file: UploadFile = None):
 
         # Classification (NO measurement param!)
         classification = classify_json(detections, image_id=file.filename)
-
-        # Attach detections (with masks) for frontend visualization
-        classification["detections"] = detections
 
         # Attach measurements here
         classification["measurements"] = measurements

@@ -1,18 +1,30 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Sketch from "./Sketch";
 import "../App.css";
+import { useTheme } from "../context/ThemeContext";
 
 const BACKEND_UPLOAD = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/analyze-chair`
   : "http://127.0.0.1:8000/analyze-chair";
 
+const AUTH_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/auth`
+  : "http://127.0.0.1:8000/auth";
+
 function Dashboard() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const [profile, setProfile] = useState(() => ({
+    username: (localStorage.getItem("username") || "").trim(),
+    email: (localStorage.getItem("email") || "").trim(),
+  }));
+  const displayUsername = profile.username || "Designer";
+  const displayEmail = profile.email || "Not available";
+  const userInitial = displayUsername.charAt(0).toUpperCase();
 
   const [isSidebarExpanded, setSidebarExpanded] = useState(true);
   const [isModalOpen, setModalOpen] = useState(false);
-  const [isSketchOpen, setSketchOpen] = useState(false);
+  const [isUserMenuOpen, setUserMenuOpen] = useState(false);
 
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -26,6 +38,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
 
   const inputRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const [segments, setSegments] = useState([]);
   const [result, setResult] = useState(null);
@@ -65,6 +78,74 @@ function Dashboard() {
   useEffect(() => {
     if (preview) setLastPreview(preview);
   }, [preview]);
+
+  useEffect(() => {
+    const userId = localStorage.getItem("user_id");
+    if (!userId || profile.email) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const response = await fetch(`${AUTH_BASE}/profile/${userId}`);
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        if (!isMounted) {
+          return;
+        }
+
+        const nextUsername = typeof data?.username === "string" ? data.username.trim() : "";
+        const nextEmail = typeof data?.email === "string" ? data.email.trim() : "";
+
+        setProfile((prev) => ({
+          username: prev.username || nextUsername,
+          email: prev.email || nextEmail,
+        }));
+
+        if (nextUsername) {
+          localStorage.setItem("username", nextUsername);
+        }
+        if (nextEmail) {
+          localStorage.setItem("email", nextEmail);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user profile:", err);
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile.email]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
   // Restore state from sessionStorage on mount
   useEffect(() => {
@@ -120,16 +201,18 @@ function Dashboard() {
     setModalOpen(false);
   }
 
-  function openSketch() {
-    setSketchOpen(true);
-  }
-
-  function closeSketch() {
-    setSketchOpen(false);
-  }
-
   function toggleSidebar() {
     setSidebarExpanded(!isSidebarExpanded);
+    setUserMenuOpen(false);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("username");
+    localStorage.removeItem("email");
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("dashboardState");
+    navigate("/login");
   }
 
   // Chat Messaging
@@ -262,11 +345,11 @@ function Dashboard() {
         <button className="sidebar-toggle" onClick={toggleSidebar}>
           {isSidebarExpanded ? (
             <svg className="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 18l-6-6 6-6" />
             </svg>
           ) : (
             <svg className="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 6l6 6-6 6" />
             </svg>
           )}
         </button>
@@ -303,7 +386,7 @@ function Dashboard() {
             className="nav-item"
             onClick={(e) => {
               e.preventDefault();
-              openSketch();
+              navigate("/sketch");
             }}
           >
             <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,22 +411,87 @@ function Dashboard() {
         </nav>
 
         {isSidebarExpanded && (
-          <div className="sidebar-footer">
-            <a
-              href="/"
-              className="back-link"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/");
-              }}
-            >
-              <svg className="back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span>Back to Home</span>
-            </a>
+          <div className="sidebar-preview-section">
+            <div className="sidebar-preview-header">
+              <span className="sidebar-preview-title">Uploaded image</span>
+              {file && <span className="muted small sidebar-preview-filename">{file.name}</span>}
+            </div>
+            {displayPreview ? (
+              <img
+                src={displayPreview}
+                alt="Uploaded preview"
+                className="sidebar-preview-image"
+              />
+            ) : (
+              <div className="muted small sidebar-preview-empty">No image selected yet.</div>
+            )}
           </div>
         )}
+
+        <div className="sidebar-footer">
+          <button
+            className="nav-item"
+            onClick={toggleTheme}
+          >
+            <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {theme === "dark" ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05 5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1 1 11.21 3c-.35.75-.55 1.58-.55 2.46a7 7 0 0 0 7 7c.88 0 1.71-.2 2.46-.67Z" />
+              )}
+            </svg>
+            {isSidebarExpanded && <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}
+          </button>
+          <a 
+            href="/"
+            className="nav-item"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/");
+            }}
+          >
+            <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            {isSidebarExpanded && <span>Back to Home</span>}
+          </a>
+
+          <div className="user-menu-wrapper" ref={userMenuRef}>
+            <button
+              type="button"
+              className="sidebar-user user-menu-trigger"
+              title={`Logged in as ${displayUsername}`}
+              aria-haspopup="dialog"
+              aria-expanded={isUserMenuOpen}
+              onClick={() => setUserMenuOpen((prev) => !prev)}
+            >
+              <div className="sidebar-user-avatar">{userInitial}</div>
+              {isSidebarExpanded && (
+                <div className="sidebar-user-meta">
+                  <div className="sidebar-user-name">{displayUsername}</div>
+                  <div className="sidebar-user-role">Account</div>
+                </div>
+              )}
+            </button>
+
+            {isUserMenuOpen && (
+              <div className={`user-menu-popover ${isSidebarExpanded ? "expanded" : "collapsed"}`} role="dialog" aria-label="User profile menu">
+                <div className="user-menu-title">Profile</div>
+                <div className="user-menu-row">
+                  <span className="user-menu-label">Username</span>
+                  <span className="user-menu-value">{displayUsername}</span>
+                </div>
+                <div className="user-menu-row">
+                  <span className="user-menu-label">Email</span>
+                  <span className="user-menu-value user-menu-email">{displayEmail}</span>
+                </div>
+                <button type="button" className="user-menu-logout" onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </aside>
 
       {/* MAIN CONTENT */}
@@ -362,7 +510,7 @@ function Dashboard() {
         >
           <div>
             <div className="muted small">Upload status</div>
-            <h2 style={{ margin: "6px 0 0", color: "#111" }}>{status}</h2>
+            <h2 style={{ margin: "6px 0 0", color: "var(--text-primary)" }}>{status}</h2>
           </div>
 
           {result && (
@@ -371,8 +519,8 @@ function Dashboard() {
               style={{
                 padding: "6px 12px",
                 borderRadius: 10,
-                background: "#f3f4f6",
-                border: "1px solid #e5e5e5",
+                background: "var(--surface-muted)",
+                border: "1px solid var(--border-color)",
               }}
             >
               Text: {resultText ? `${resultText.length} chars` : "0"} · Segments:{" "}
@@ -380,72 +528,6 @@ function Dashboard() {
               {detections.length}
             </div>
           )}
-        </div>
-
-        {/* CONTENT GRID (panels) */}
-        <div
-          className="content-sections"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 16,
-          }}
-        >
-          {/* Uploaded Image */}
-          <div
-            className="panel-card"
-            style={{ minHeight: 180, maxWidth: 500, justifySelf: "start" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>Uploaded image</div>
-              {file && <span className="muted small">{file.name}</span>}
-            </div>
-            {displayPreview ? (
-              <img
-                src={displayPreview}
-                alt="Uploaded preview"
-                style={{
-                  width: "100%",
-                  maxHeight: 180,
-                  objectFit: "contain",
-                  borderRadius: 12,
-                  border: "1px solid #e5e5e5",
-                  background: "#f9f9f9",
-                }}
-              />
-            ) : (
-              <div className="muted small">No image selected yet.</div>
-            )}
-            
-            {result && (imageDataUrl || displayPreview) && (
-              <button
-                className="btn"
-                onClick={() => {
-                  navigate("/visualize", {
-                    state: {
-                      imageUrl: imageDataUrl || displayPreview,
-                      segments: segments,
-                      result: result,
-                    },
-                  });
-                }}
-                style={{
-                  marginTop: 12,
-                  width: "100%",
-                }}
-              >
-                Visualize Chair
-              </button>
-            )}
-          </div>
-
         </div>
 
         {/* CHAT AREA */}
@@ -520,7 +602,7 @@ function Dashboard() {
                     maxWidth: "100%",
                     maxHeight: 320,
                     borderRadius: 14,
-                    border: "1px solid #e5e5e5",
+                    border: "1px solid var(--border-color)",
                     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
                   }}
                 />
@@ -546,18 +628,6 @@ function Dashboard() {
             <div className="muted small" style={{ marginTop: 10 }}>
               {loading ? "Working..." : ""}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* SKETCH MODAL */}
-      {isSketchOpen && (
-        <div className="sketch-modal-backdrop" role="dialog">
-          <div className="sketch-modal-content">
-            <button className="sketch-close-btn" onClick={closeSketch}>
-              ✕
-            </button>
-            <Sketch />
           </div>
         </div>
       )}
