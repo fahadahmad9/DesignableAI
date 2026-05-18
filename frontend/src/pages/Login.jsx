@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/auth.css";
+import axios from "axios";
 
 const AUTH_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/auth`
@@ -11,8 +12,8 @@ function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -20,42 +21,12 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${AUTH_BASE}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        let message = "Login failed. Please try again.";
-
-        try {
-          const data = await response.json();
-          if (typeof data?.detail === "string") {
-            message = data.detail;
-          }
-        } catch {
-          // Fallback to generic message if response is not JSON.
-        }
-
-        setError(message);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data?.user_id) {
-        localStorage.setItem("user_id", String(data.user_id));
-      }
-      if (data?.username) {
-        localStorage.setItem("username", data.username);
-      }
-      localStorage.setItem("email", data?.email || email);
-
-
+      const res = await axios.post("http://localhost:8000/login", { email, password });
+      localStorage.setItem("token", res.data.access_token);
+      localStorage.setItem("userEmail", email);
       navigate("/dashboard");
     } catch (err) {
-      setError(err?.message || "Network error. Please check your connection.");
+      setError(err.response?.data?.detail || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -63,13 +34,16 @@ function Login() {
 
   return (
     <div className="auth-container">
-      <Link to="/" className="auth-logo" aria-label="Back to landing page">
-        DesignableAI
-      </Link>
-      
+      <div className="auth-logo">DesignableAI</div>
+      <button type="button" className="auth-back-btn" onClick={() => navigate("/dashboard")}>
+        Back to Dashboard
+      </button>
+
       <div className="auth-card">
         <h1 className="auth-title">Welcome Back</h1>
         <p className="auth-subtitle">Log in to continue designing</p>
+
+        {error && <p className="auth-error">{error}</p>}
 
         <form onSubmit={handleLogin}>
           {error && <p className="auth-error">{error}</p>}

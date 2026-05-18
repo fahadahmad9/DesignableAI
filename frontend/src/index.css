@@ -35,14 +35,15 @@ html[data-theme="dark"] body {
   color: #e5edf9;
 }
 
-a {
-  color: inherit;
-  text-decoration: inherit;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
 }

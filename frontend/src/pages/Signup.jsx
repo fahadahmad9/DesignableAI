@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/auth.css";
+import axios from "axios";
 
 const AUTH_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/auth`
@@ -12,8 +13,8 @@ function Signup() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -21,35 +22,13 @@ function Signup() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${AUTH_BASE}/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          username,
-          password,
-        }),
-      });
-
-      if (!response.ok) {
-        let message = "Signup failed. Please try again.";
-
-        try {
-          const data = await response.json();
-          if (typeof data?.detail === "string") {
-            message = data.detail;
-          }
-        } catch {
-          // Fallback to generic message if response is not JSON.
-        }
-
-        setError(message);
-        return;
-      }
-
-      navigate("/login");
+      const res = await axios.post("http://localhost:8000/signup", { name, email, password });
+      localStorage.setItem("token", res.data.access_token);
+      localStorage.setItem("userEmail", email);
+      localStorage.setItem("userName", name);
+      navigate("/dashboard");
     } catch (err) {
-      setError(err?.message || "Network error. Please check your connection.");
+      setError(err.response?.data?.detail || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -57,13 +36,16 @@ function Signup() {
 
   return (
     <div className="auth-container">
-      <Link to="/" className="auth-logo" aria-label="Back to landing page">
-        DesignableAI
-      </Link>
-      
+      <div className="auth-logo">DesignableAI</div>
+      <button type="button" className="auth-back-btn" onClick={() => navigate("/dashboard")}>
+        Back to Dashboard
+      </button>
+
       <div className="auth-card">
         <h1 className="auth-title">Create Account</h1>
         <p className="auth-subtitle">Start designing with AI today</p>
+
+        {error && <p className="auth-error">{error}</p>}
 
         <form onSubmit={handleSignup}>
           {error && <p className="auth-error">{error}</p>}
@@ -105,7 +87,7 @@ function Signup() {
           </div>
 
           <button type="submit" className="auth-btn signup" disabled={loading}>
-            {loading ? "Creating account..." : "Sign Up"}
+            {loading ? "Creating Account..." : "Sign Up"}
           </button>
 
           <p className="auth-footer">

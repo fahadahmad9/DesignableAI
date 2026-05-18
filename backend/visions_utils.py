@@ -10,9 +10,21 @@ from google.cloud import vision
 _client = None
 
 def get_vision_client():
-    """Load Google Cloud Vision OCR client once."""
     global _client
     if _client is None:
+        import os
+        # 1. Get the folder where THIS file (visions_utils.py) actually lives
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # 2. Force the path to the JSON file in your Downloads/backend folder
+        # Make sure the name matches your sidebar: "DesignableAI.json"
+        json_path = os.path.join(current_dir, "DesignableAI.json")
+        
+        # 3. OVERWRITE the environment variable (this kills the /Documents/ ghost)
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = json_path
+        
+        print(f"--- DEBUG: FORCING VISION PATH TO: {json_path} ---")
+        
         _client = vision.ImageAnnotatorClient()
     return _client
 
@@ -47,33 +59,71 @@ def ocr_extract_lines(image_path: str) -> List[str]:
 # ============================================================
 
 CANONICAL_MEAS_LABELS = {
-    "AH": "arm_height",
-    "ARM_HEIGHT": "arm_height",
-    "ARM_H": "arm_height",
+    # Chair labels
+    "AH": "AH",
+    "ARM_HEIGHT": "AH",
+    "ARM_H": "AH",
+    "ARMHT": "AH",
 
-    "SD": "seat_depth",
-    "SEAT_DEPTH": "seat_depth",
+    "SD": "SD",
+    "SEAT_DEPTH": "SD",
+    "SEAT_D": "SD",
 
-    "SW": "seat_width",
-    "SEAT_WIDTH": "seat_width",
+    "SW": "SW",
+    "SEAT_WIDTH": "SW",
+    "SEAT_W": "SW",
 
-    "SH": "seat_height",
-    "SEAT_HEIGHT": "seat_height",
+    "SH": "SH",
+    "SEAT_HEIGHT": "SH",
+    "SEAT_H": "SH",
 
-    "BH": "backrest_height",
-    "BACK_HEIGHT": "backrest_height",
+    "BH": "BH",
+    "BACK_HEIGHT": "BH",
+    "BACK_H": "BH",
 
-    "LH": "leg_height",
-    "LEG_HEIGHT": "leg_height",
+    # Shared / table labels
+    "LH": "LH",
+    "LEG_HEIGHT": "LH",
+    "LEG_H": "LH",
+
+    "TH": "TH",
+    "TABLE_HEIGHT": "TH",
+    "TABLE_H": "TH",
+
+    "TL": "TL",
+    "TABLE_LENGTH": "TL",
+    "TABLE_L": "TL",
+    "LENGTH": "TL",
+
+    "TW": "TW",
+    "TABLE_WIDTH": "TW",
+    "TABLE_W": "TW",
+    "WIDTH": "TW",
+
+    "LS": "LS",
+    "LEG_SPACING": "LS",
+    "LEG_SPACE": "LS",
+
+    "CW": "CW",
+    "CLEARANCE_WIDTH": "CW",
+
+    "TO": "TO",
+    "TOP_OVERHANG": "TO",
+
+    "AC": "AC",
+    "ALLOCATION": "AC",
+
+    "SR": "SR",
+    "SURFACE_REGULARITY": "SR",
 }
 
 # ============================================================
 # 4. REGEX FOR MEASUREMENTS
 # ============================================================
 
-MEAS_REGEX = re.compile(
+MEAS_REGEX_LABEL_FIRST = re.compile(
     r"""
-    (?P<label>[A-Za-z]{1,6})           # AH, SD, SW, etc.
+    (?P<label>[A-Za-z_]{1,18})         # AH, TL, TABLE_HEIGHT, etc.
     \s*[:=\s]?\s*
     (?P<value>\d{1,4}(?:[.,]\d{1,2})?) # number like 420 or 45.5
     \s*
@@ -81,6 +131,45 @@ MEAS_REGEX = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE
 )
+
+MEAS_REGEX_VALUE_FIRST = re.compile(
+    r"""
+    (?P<value>\d{1,4}(?:[.,]\d{1,2})?)
+    \s*
+    (?P<unit>mm|cm|in|inch|inches|")?
+    \s*[:=\s-]*\s*
+    (?P<label>[A-Za-z_]{1,18})
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _normalize_measurement_label(raw_label: str) -> str:
+    label_key = (raw_label or "").upper().strip()
+    label_key = re.sub(r"[^A-Z_]", "", label_key)
+    if not label_key:
+        return ""
+
+    direct = CANONICAL_MEAS_LABELS.get(label_key)
+    if direct:
+        return direct
+
+    compact = label_key.replace("_", "")
+    direct = CANONICAL_MEAS_LABELS.get(compact)
+    if direct:
+        return direct
+
+    # OCR-safe aliases for common confusions
+    ocr_aliases = {
+        "5H": "SH",
+        "8H": "BH",
+        "1H": "LH",
+        "T1": "TL",
+        "TW": "TW",
+        "TH": "TH",
+        "L5": "LS",
+    }
+    return ocr_aliases.get(label_key, "")
 
 # ============================================================
 # 5. PARSING MEASUREMENTS
@@ -100,7 +189,14 @@ def parse_measurements_from_lines(lines: List[str]) -> Dict[str, Dict]:
     parsed = {}
 
     for ln in lines:
-        for match in MEAS_REGEX.finditer(ln):
+        # normalize OCR dashes/punctuation noise without destroying content
+        normalized_line = (ln or "").replace("—", "-").replace("–", "-")
+
+        matches = []
+        matches.extend(MEAS_REGEX_LABEL_FIRST.finditer(normalized_line))
+        matches.extend(MEAS_REGEX_VALUE_FIRST.finditer(normalized_line))
+
+        for match in matches:
             raw_label = match.group("label")
             raw_value = match.group("value").replace(",", ".")
             raw_unit = (match.group("unit") or "").lower().replace(".", "")
@@ -122,28 +218,21 @@ def parse_measurements_from_lines(lines: List[str]) -> Dict[str, Dict]:
                 value_mm = num
                 unit = "mm"
 
-            # Canonicalize label
-            label_key = raw_label.upper().strip()
-
-            canonical = CANONICAL_MEAS_LABELS.get(label_key)
-            if not canonical:
-                # fallback: strip punctuation
-                cleaned = re.sub(r"[^A-Za-z]", "", label_key)
-                canonical = CANONICAL_MEAS_LABELS.get(cleaned)
+            canonical = _normalize_measurement_label(raw_label)
 
             if canonical:
                 parsed[canonical] = {
                     "raw_label": raw_label,
                     "value": round(value_mm, 2),
                     "unit": "mm",
-                    "source_line": ln,
+                    "source_line": normalized_line,
                 }
             else:
                 parsed.setdefault("other", []).append({
                     "label": raw_label,
                     "value": num,
                     "unit": raw_unit or "unknown",
-                    "source_line": ln
+                    "source_line": normalized_line
                 })
 
     return parsed

@@ -1,45 +1,91 @@
+# chair_summaries.py
+
 CHAIR_SUMMARIES = {
-    "Eames Lounge Chair": """The Eames Lounge Chair is an iconic mid-century modern lounge chair known for its luxurious comfort, molded plywood shells, and soft leather cushions. It consists of three main cushioned sections (headrest, backrest, seat) attached to curved wooden shells, plus padded armrests and a metal 5-star swivel base. The design is characterized by its warm wood veneers, separated “floating” cushions, a slightly reclined ergonomic profile, and premium craftsmanship.
+    "Eames Lounge Chair": {
+        "depth_analysis": "Iconic mid-century modern design using molded plywood technology and shock-mount flexibility.",
+        "ergonomics": {
+            "seat_height": "15 inches (standard for lounge)",
+            "recline_angle": "15 degrees permanent tilt",
+            "lumbar_support": "Lower shell must support the L4-L5 vertebrae."
+        },
+        "construction": {
+            "materials": "7-ply molded rosewood/walnut; Die-cast aluminum base.",
+            "joinery": "Rubber vibration shock mounts; toggle bolts for shell-to-base.",
+            "steps": "1. Press plywood veneers. 2. Attach rubber mounts. 3. Bolt shells to the cast aluminum base."
+        }
+    },
+    "Ergonomic Office Chair": {
+        "depth_analysis": "High-performance task seating centered on dynamic support and micro-movements.",
+        "ergonomics": {
+            "seat_height": "16 to 21 inches (adjustable)",
+            "seat_depth": "15 to 18 inches",
+            "lumbar_point": "6 to 10 inches above seat level.",
+            "SW": "19\" - 21\" (Standard width)",
+            "AH": "7\" - 10\" (Ideally adjustable)",
+            "BH": "18\" - 24\" (Lumbar focus)",
+            "LH": "14\" - 16\" (To caster base)"
+        },
+        "construction": {
+            "materials": "Glass-reinforced nylon; Breathable elastomeric mesh.",
+            "mechanism": "Class 4 Gas Cylinder; Synchro-tilt plate.",
+            "steps": "1. Assemble 5-star base. 2. Press gas lift into base. 3. Mount control mechanism to seat pan."
+        }
+    },
+    "Wing Chair": {
+        "depth_analysis": "Traditional high-back accent chair designed for thermal retention and side-head support.",
+        "ergonomics": {
+            "SH": "17\" - 19\" (Standard seat height)",
+            "SD": "20\" - 22\" (Deep seating for lounging)",
+            "SW": "20\" - 24\" (Wide for comfort)",
+            "AH": "7\" - 9\" above seat",
+            "BH": "28\" - 32\" (High-back support)",
+            "LH": "8\" - 12\" (Depending on cushion thickness)"
+        },
+        "construction": {
+            "materials": "Kiln-dried hardwood frame; Sinuous (no-sag) springs.",
+            "joinery": "Double-doweled and corner-blocked joints.",
+            "steps": "1. Frame assembly. 2. Webbing and spring installation. 3. Multi-layer foam padding."
+        }
+    },
+    "Armchair": {
+        "depth_analysis": "A versatile, foundational piece of furniture focusing on upright support and balanced proportions.",
+        "ergonomics": {
+            "seat_height": "18 inches (standard dining/accent height)",
+            "back_rest_angle": "95 to 105 degrees for active sitting.",
+            "arm_rest_clearance": "Ensure 25-26 inches of clearance from floor to top of arm to fit under standard tables."
+        },
+        "construction": {
+            "materials": "Solid Ash or Oak frame; High-resiliency (HR) foam cushions.",
+            "joinery": "Mortise-and-tenon for leg-to-rail connections; Bridle joints for the backrest frame.",
+            "steps": "1. Cut and mill the leg and rail stock. 2. Execute joinery. 3. Dry-fit and glue the frame. 4. Install seat cleats and drop-in upholstered cushion."
+        }                                                                                       
+    },
+    "Egg Chair": {
+        "depth_analysis": "A mid-century sculptural masterpiece designed to provide a 'cocoon' of privacy using a reinforced fiberglass shell.",
+        "ergonomics": {
+            "seat_height": "14.5 inches (low-profile swivel)",
+            "shell_height": "42 inches for full head privacy",
+            "tilt": "Adjustable tilt-tension based on user weight."
+        },
+        "construction": {
+            "materials": "Fiberglass or polyurethane foam-reinforced shell; Satin-polished aluminum base.",
+            "joinery": "The shell is a single molded piece; the base uses a welded steel spindle and spring assembly.",
+            "steps": "1. Mold the inner shell. 2. Glue foam directly to the shell surface. 3. Hand-stitch the fabric (the 'wave' stitch) to ensure no visible seams on the curves. 4. Mount to the 4-star swivel base."
+        }
+    },
+    "Sofa Chair": {
+        "depth_analysis": "A heavy-duty lounge seat prioritizing 'deep-sink' comfort and high-load distribution across a wide footprint.",
+        "ergonomics": {
+            "seat_height": "16 to 18 inches",
+            "seat_depth": "22 to 24 inches (allows for toss pillows)",
+            "arm_width": "5 to 8 inches for structural 'sofa' feel."
+        },
+        "construction": {
+            "materials": "Kiln-dried Maple or Birch frame; 8-way hand-tied springs or Sinuous wire.",
+            "joinery": "Triple-doweled joints with glued-and-screwed corner blocks for lateral stability.",
+            "steps": "1. Build the 'box' frame with hardwood. 2. Install seat suspension (springs). 3. Apply layer of 2.5lb density foam. 4. Finish with batting and final fabric upholstery."
+        }
+    }
 
-Key customizable elements include the leather (color, texture, stitching, firmness), the wood veneer (walnut, rosewood, ebony, custom stains, gloss level), and the metal base (black, chrome, brushed steel, gold). These parts allow the chair to shift between a classic mid-century aesthetic or a more modern, bold interpretation.  """,
-
-    "Ergonomic Office Chair": """An ergonomic office chair is designed to support the body during long periods of sitting by optimizing posture, comfort, and adjustability. It typically includes a mesh or upholstered backrest with lumbar support, an adjustable seat with padding, height-adjustable armrests, a headrest, a gas-lift height mechanism, and a 5-star rolling base. The chair’s structure allows adjustments in seat height, recline tension, lumbar depth, arm positions, and sometimes seat tilt to reduce strain on the back, neck, and shoulders.
-
-Key customizable elements include the upholstery material (mesh for breathability, fabric or leather for comfort), frame and base color (black, white, metallic), armrest style (fixed, 2D/3D/4D adjustable), and cushion density. Users can also customize the lumbar support intensity, headrest shape, and overall color palette to match their workspace theme.
-
-When assisting the user, the model should focus on:
-— Identifying comfort issues (back pain, long sitting hours, heat buildup)
-— Asking which adjustability features they need (lumbar, armrests, tilt, recline)
-— Recommending material and color combinations
-— Ensuring modifications maintain ergonomic function and long-term comfort """,
-
-    "Sofa Chair": """ A sofa armrest chair is a compact, single-seat lounge chair styled like a miniature sofa. It typically features thick upholstered cushions, broad padded armrests, a supportive backrest, and a sturdy wooden or metal frame. The design emphasizes comfort, softness, and a home-like aesthetic, making it suitable for living rooms, bedrooms, and cozy sitting spaces. Its form can range from modern and minimalist to classic and plush, depending on fabric, shape, and detailing.
-
-Key customizable elements include fabric material (linen, velvet, cotton blends, leather), color and patterns, armrest style (straight, curved, rolled, pillow-style), cushion firmness, leg style (wooden tapered legs, metal legs, block legs), and stitching or tufting details. These options significantly change the chair’s mood—from modern and sleek to warm and traditional.
-
-When assisting the user, the model should focus on:
-— Understanding the intended style (modern, cozy, traditional, minimal)
-— Asking about preferred fabric texture, color palette, and cushion softness
-— Recommending armrest and leg styles that match the user’s interior theme
-— Ensuring customizations maintain balanced proportions and overall visual harmony """,
-
-    "Egg Chair": """ The Egg Chair is a sculptural, high-back lounge chair known for its smooth, rounded “egg-like” silhouette and enveloping form. It typically features a curved shell that wraps around the user to create a sense of privacy, integrated armrests formed by the continuous shape of the shell, a cushioned interior, and a swivel metal base. Its design blends modern elegance with comfort, making it popular in living rooms, lounges, and contemporary interior spaces.
-
-Key customizable elements include the upholstery material (wool, fabric, velvet, leather), color palette (neutrals, bold tones, pastel modern colors), and shell finish or texture depending on the version. The metal base can also be customized in finishes like brushed steel, chrome, black, or matte colors. Cushion firmness, stitching style, and even two-tone color combinations can significantly alter the chair’s aesthetic—from minimalist modern to playful and expressive.
-
-When assisting the user, the model should focus on:
-— Asking whether they want a classic modern look or a more vibrant, contemporary interpretation
-— Understanding preferred fabric type, color family, and tactile feel
-— Recommending finish/color combinations for the shell and base
-— Ensuring choices maintain the chair’s iconic sculptural shape and balanced visual presence""",
-
-    "Armchair": """ A generic armchair is a versatile, single-seat chair designed for everyday comfort and support. It typically features a cushioned seat, a supportive backrest, and two armrests, all built on a sturdy wooden or metal frame. The shape, proportions, and style can vary widely—from modern and minimal to traditional and plush—making it suitable for living rooms, bedrooms, offices, and lounge areas. Its simplicity and flexibility allow it to blend into many types of interior spaces.
-
-Key customizable elements include fabric material (cotton, linen, velvet, wool blends, leather), color and patterns, armrest shape (straight, curved, padded, rolled), backrest height and style, cushion firmness, and leg style (wooden tapered legs, metal legs, block legs, or hidden base). Stitching, tufting, and piping can also be adjusted to create a more modern, classic, or decorative look.
-
-When assisting the user, the model should focus on:
-— Identifying the desired overall style (minimal, cozy, classic, bold)
-— Asking about preferred upholstery textures, colors, and comfort levels
-— Recommending armrest and leg styles that fit their interior design direction
-— Ensuring chosen materials and colors feel cohesive and proportional for the chair’s shape""",
+    
 }
