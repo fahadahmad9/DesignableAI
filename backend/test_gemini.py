@@ -1,9 +1,11 @@
+import os
 from google import genai
 import sys
 
-# Replace this with your NEW API Key from Google AI Studio
-# Make sure there are no spaces inside the quotes!
-API_KEY = "AIzaSyDZ6gSgbtTLgKOdAAh565B4BQOZM8OY59Y"
+# Load API Key from environment variable
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable not set. Please set it before running tests.")
 
 def test_connection():
     print("--- 🚀 Testing DesignableAI Connection ---")

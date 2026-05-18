@@ -1,9 +1,12 @@
 # gemini_client.py
+import os
 from google import genai
 
 # 1. INITIALIZE THE NEW CLIENT
-# Replace with your validated API Key
-API_KEY = "AQ.Ab8RN6JN1lBDV_NyRQSs8QkTTCIC_W_ZNi9enFeS0j3resWOAQ" 
+# Load API Key from environment variable
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable not set")
 client = genai.Client(api_key=API_KEY)
 
 # This dictionary stores the history of the conversation
