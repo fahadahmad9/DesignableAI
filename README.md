@@ -431,23 +431,17 @@ Building DesignableAI involved several challenges beyond simply integrating exis
 
 # 🎥 Demo & Screenshots
 
-### Sketch Upload
+### Sketch Analysis
 
-```text
 ![Sketch Analysis](Screenshots/sketch.png)
-```
 
-### Sketch Analysis done
+### Interactive Workspace
 
-```text
 ![Interactive Workspace](Screenshots/workspace.png)
-```
 
 ### 3D Sculpt Studio
 
-```text
 ![3D Sculpt Studio](Screenshots/3d-sculpt.png)
-```
 
 ---
 
